@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+
+Green="\033[32m"
+Font="\033[0m"
+Red="\033[31m" 
+
+#root权限
+root_need(){
+    if [[ $EUID -ne 0 ]]; then
+        echo -e "${Red}Error:This script must be run as root!${Font}"
+        exit 1
+    fi
+}
+
+# function to ask user for y/n response
+ask_user(){
+local answer
+while true
+  do
+    read answer
+    case $answer in [Yy]* ) return 0 ;;
+                    [Nn]* ) return 1 ;;
+                        * ) echo "Enter y or n";;
+    esac
+  done
+}
+
+
+
+#安装ghostunnel
+install_ghostunnel(){
+
+echo -e "${Green}开始安装Ghostunnel${Font}"
+apt-get update
+apt-get install -y build-essential screen git
+wget https://dl.google.com/go/go1.13.7.linux-amd64.tar.gz
+tar -C /usr/local -xvf go1.13.7.linux-amd64.tar.gz
+
+echo 'export GOPATH=$HOME/go' >> /etc/profile
+echo 'export GOROOT=/usr/local/go' >> /etc/profile
+echo 'export PATH=$GOPATH/bin:$GOROOT/bin:$PATH' >> /etc/profile
+echo 'export GO111MODULE=on' >> /etc/profile
+echo 'export GOPROXY=https://goproxy.io,direct' >> /etc/profile
+source /etc/profile
+
+go get -u github.com/square/ghostunnel
+
+
+}
+
+
+#确认IP地址
+get_ip() {
+serverip=$(ip route get 8.8.8.8 | awk 'NR==1 {print $7}')
+
+echo "当前主机IP是否为 ${serverip} (y/n)？"
+if ! ask_user; then
+    read -p "请输入当前主机的IP地址：" serverip
+fi
+
+    
+}
+
+
+
+#生成证书
+gen_ca(){
+
+go get -u github.com/square/certstrap
+mkdir /cert
+echo -e "${Green}开始生成证书${Font}"
+certstrap --depot-path /cert init --passphrase ""  --expires "10 years" --common-name "ca"
+certstrap --depot-path /cert request-cert --passphrase "" --common-name "cert" --ip $serverip
+certstrap --depot-path /cert sign "cert" --passphrase "" --expires "10 years" --CA "ca"
+}
+
+
+#设置开机自启动
+set_startup(){
+echo -e "${Green}设置开机自启动${Font}"
+
+echo "screen -dmS tunnel sh" > /etc/init.d/tlstun
+echo "sleep 3" >> /etc/init.d/tlstun
+echo "screen -S tunnel -X stuff '${runcmd}'" >> /etc/init.d/tlstun
+
+chmod 775 /etc/init.d/tlstun
+update-rc.d tlstun defaults 100
+
+}
+
+
+#安装入口端
+install_client(){
+read -p "请输入隧道入口端口:" clientport
+read -p "请输入隧道出口端的域名/IP地址:" targetadr
+read -p "请输入隧道出口端接收端口:" targetport
+
+get_ip
+install_ghostunnel
+gen_ca
+
+runcmd="ghostunnel client --listen 0.0.0.0:${clientport} --target ${targetadr}:${targetport} --cert /cert/cert.crt --key /cert/cert.key --cacert /cert/ca.crt --unsafe-listen
+"
+set_startup
+
+echo -e "${Green}开始启动客户端${Font}"
+screen -dmS tunnel sh
+sleep 3
+screen -S tunnel -X stuff "${runcmd}"
+echo -e "${Green}客户端已启动。输入screen -r tunnel查看运行情况。${Font}"
+}
+
+
+
+#安装出口端
+install_server(){
+read -p "请输入隧道出口端接收端口:" serverport
+read -p "请输入隧道传出的数据发往的端口:" terminalport
+
+get_ip
+install_ghostunnel
+gen_ca
+
+runcmd="ghostunnel server --listen 0.0.0.0:${serverport} --target localhost:${terminalport} --cert /cert/cert.crt --key /cert/cert.key --cacert /cert/ca.crt --allow-all
+"
+set_startup
+
+echo -e "${Green}开始启动服务端${Font}"
+screen -dmS tunnel sh
+sleep 3
+screen -S tunnel -X stuff "${runcmd}"
+echo -e "${Green}服务端已启动。输入screen -r tunnel查看运行情况。${Font}"
+}
+
+
+
+#开始菜单
+main(){
+root_need
+clear
+echo -e "———————————————————————————————————————"
+echo -e "${Green}TLS隧道一键安装脚本${Font}"
+echo -e "${Green}1、安装隧道入口端${Font}"
+echo -e "${Green}2、安装隧道出口端${Font}"
+echo -e "———————————————————————————————————————"
+read -p "请输入数字 [1-2]:" num
+case "$num" in
+    1)
+    install_client
+    ;;
+    2)
+    install_server
+    ;;
+    *)
+    clear
+    echo -e "${Green}请输入正确数字 [1-2]${Font}"
+    sleep 2s
+    main
+    ;;
+    esac
+}
+main
