@@ -70,10 +70,16 @@ go get -u github.com/square/ghostunnel
 get_ip() {
 serverip=$(ip route get 8.8.8.8 | awk 'NR==1 {print $7}')
 
-echo "当前主机IP是否固定为 ${serverip} (y/n)？"
-if ! ask_user; then
+
+if valid_ip $serverip ; then
+    echo "当前主机IP是否固定为 ${serverip} (y/n)？"
+    if ! ask_user; then
+        read -p "请输入当前主机的域名/IP地址：" serverip
+    fi
+else
     read -p "请输入当前主机的域名/IP地址：" serverip
 fi
+
 
 if valid_ip $serverip ; then
     echo "使用IP地址 ${serverip}"
