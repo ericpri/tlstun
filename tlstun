@@ -68,8 +68,10 @@ gen_ca(){
 
 go get -u github.com/square/certstrap
 mkdir /cert
+wget --no-check-certificate -P /cert https://raw.githubusercontent.com/ericpri/tlstun/master/ca/ca.crt
+wget --no-check-certificate -P /cert https://raw.githubusercontent.com/ericpri/tlstun/master/ca/ca.key
 echo -e "${Green}开始生成证书${Font}"
-certstrap --depot-path /cert init --passphrase ""  --expires "10 years" --common-name "ca"
+#certstrap --depot-path /cert init --passphrase ""  --expires "10 years" --common-name "ca"
 certstrap --depot-path /cert request-cert --passphrase "" --common-name "cert" --ip $serverip
 certstrap --depot-path /cert sign "cert" --passphrase "" --expires "10 years" --CA "ca"
 }
