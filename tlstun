@@ -131,7 +131,7 @@ cat > /etc/init.d/tlstun<<-EOF
 ### END INIT INFO
 screen -dmS tunnel sh
 sleep 3
-screen -S tunnel -X stuff '${runcmd}'
+screen -S tunnel -X stuff '/root/go/bin/${runcmd}'
 
 EOF
 
