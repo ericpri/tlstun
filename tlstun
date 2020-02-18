@@ -117,9 +117,24 @@ certstrap --depot-path /cert sign "cert" --passphrase "" --expires "10 years" --
 set_startup(){
 echo -e "${Green}设置开机自启动${Font}"
 
-echo "screen -dmS tunnel sh" > /etc/init.d/tlstun
-echo "sleep 3" >> /etc/init.d/tlstun
-echo "screen -S tunnel -X stuff '${runcmd}'" >> /etc/init.d/tlstun
+cat > /etc/init.d/tlstun<<-EOF
+#!/usr/bin/env bash
+
+### BEGIN INIT INFO
+# Provides:          tlstun
+# Required-Start:    $network $local_fs $remote_fs
+# Required-Stop:     $network $local_fs $remote_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: tlstun
+# Description:       tlstun
+### END INIT INFO
+screen -dmS tunnel sh
+sleep 3
+screen -S tunnel -X stuff '${runcmd}'
+
+EOF
+
 
 chmod 775 /etc/init.d/tlstun
 update-rc.d tlstun defaults 100
