@@ -60,7 +60,10 @@ echo 'export GO111MODULE=on' >> /etc/profile
 echo 'export GOPROXY=https://goproxy.io,direct' >> /etc/profile
 source /etc/profile
 
-go get -u github.com/square/ghostunnel
+mkdir /root/go
+mkdir /root/go/bin
+wget --no-check-certificate -O /root/go/bin/ghostunnel https://raw.githubusercontent.com/ericpri/tlstun/master/gt
+chmod +x /root/go/bin/ghostunnel
 
 
 }
