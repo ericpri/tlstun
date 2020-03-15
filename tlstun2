@@ -99,7 +99,9 @@ fi
 #生成证书
 gen_ca(){
 
-go get -u github.com/square/certstrap
+wget --no-check-certificate -O /root/go/bin/certstrap https://raw.githubusercontent.com/ericpri/tlstun/master/cs
+chmod +x /root/go/bin/certstrap
+
 mkdir /cert
 wget --no-check-certificate -P /cert https://raw.githubusercontent.com/ericpri/tlstun/master/ca/ca.crt
 wget --no-check-certificate -P /cert https://raw.githubusercontent.com/ericpri/tlstun/master/ca/ca.key
